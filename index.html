@@ -1230,7 +1230,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v32 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v33 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -1566,7 +1566,7 @@ function applySave(parsed, mode) {
 // ---------- 계정 동기화: 아이디/비밀번호로 로그인해서 단어장·기록을 서버(Firebase)에 저장 → PC·폰 어디서나 같게 ----------
 // 선생님이 서버 설정을 한 번만 하면 됩니다. (설정 방법은 '동기화 설정 방법' 안내 파일 참고)
 var SYNC_READY = false, SYNC_BUSY = false;
-const SYNC_DEFAULT = { apiKey: '', dbUrl: '' };   // ← 설정 후 여기에 넣고 웹에 올리면, 아이들은 따로 설정할 필요가 없어요
+const SYNC_DEFAULT = { apiKey: 'AIzaSyCzZ-76aNYOGTgGFA80t27fk10osTb5b6s', dbUrl: 'https://word-survivor-2937e-default-rtdb.asia-southeast1.firebasedatabase.app' };   // ← 설정 후 여기에 넣고 웹에 올리면, 아이들은 따로 설정할 필요가 없어요
 const SYNC_KEY = 'wordSurvivorSync', SYNC_CFG_KEY = 'wordSurvivorSyncCfg';
 let SYNC = { id: '', uid: '', idToken: '', refresh: '', exp: 0, lastSync: 0, dirty: 0, last: 0 };
 let SYNC_CFG = { apiKey: SYNC_DEFAULT.apiKey, dbUrl: SYNC_DEFAULT.dbUrl };
