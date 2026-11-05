@@ -598,7 +598,7 @@ function balRegX(group, id, label, get, set) { BAL.push({ id, group, label, def:
   ['bolt', 'bolt_dmg', '기본 피해', 10], ['bolt', 'bolt_cd', '발사 간격(초) Lv1', 0.95], ['bolt', 'bolt_cdLv', '레벨당 간격 감소(초)', 0.12], ['bolt', 'bolt_cdMin', '최소 간격(초)', 0.32], ['bolt', 'bolt_speed', '탄 속도', 440],
   ['bolt', 'bolt_evoMul', '진화 피해 배율', 1.4], ['bolt', 'bolt_evoCd', '진화 발사 간격(초)', 0.3], ['bolt', 'bolt_evoCnt', '진화 발사 수', 5],
   ['orbit', 'orbit_dmg', '기본 피해(1회)', 12], ['orbit', 'orbit_hitCd', '같은 적 재타격 간격(초)', 0.45], ['orbit', 'orbit_radius', '회전 반지름 Lv0', 62], ['orbit', 'orbit_radiusLv', '레벨당 반지름 증가', 4],
-  ['orbit', 'orbit_evoMul', '진화 피해 배율', 1.5], ['orbit', 'orbit_evoRadius', '진화 반지름', 96], ['orbit', 'orbit_evoCnt', '진화 구슬 수', 10], ['orbit', 'orbit_knock', '맞은 적이 밀려나는 거리', 14], ['orbit', 'orbit_stun', '맞은 적이 주춤하는 시간(초)', 0.2],
+  ['orbit', 'orbit_evoMul', '진화 피해 배율', 1.5], ['orbit', 'orbit_evoRadius', '진화 반지름', 96], ['orbit', 'orbit_evoCnt', '진화 구슬 수', 10], ['orbit', 'orbit_knock', '맞은 적이 밀려나는 거리', 8], ['orbit', 'orbit_stun', '맞은 적이 주춤하는 시간(초)', 0.1], ['orbit', 'orbit_knockCd', '한 번 밀린 뒤 다시 안 밀리는 시간(초)', 2],
   ['wave', 'wave_dmg', '기본 피해', 24], ['wave', 'wave_radius', '범위 반지름 Lv0', 100], ['wave', 'wave_radiusLv', '레벨당 범위 증가', 18], ['wave', 'wave_cd', '발동 간격(초) Lv0', 3.6], ['wave', 'wave_cdLv', '레벨당 간격 감소(초)', 0.4],
   ['wave', 'wave_evoMul', '진화 피해 배율', 1.5], ['wave', 'wave_evoRadius', '진화 범위 추가', 60], ['wave', 'wave_evoSlow', '진화 둔화 시간(초)', 2],
   ['lightning', 'lightning_dmg', '기본 피해(1회 튕김)', 20], ['lightning', 'lightning_cd', '발동 간격(초) Lv0', 2.4], ['lightning', 'lightning_cdLv', '레벨당 간격 감소(초)', 0.3], ['lightning', 'lightning_cdMin', '최소 간격(초)', 0.9],
@@ -1231,7 +1231,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v35 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v36 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -1308,6 +1308,8 @@ function showBalance(group, msg) {
     '<div class="dbox"><h3>💾 저장 · 다른 곳에 똑같이 쓰기</h3><textarea id="bal-code" placeholder="수치 코드가 여기에 보여요. 가져올 때는 여기에 붙여넣고 [코드 적용]을 누르세요." style="height:calc(6 * var(--u))"></textarea>' +
     '<div class="vmsg" id="bal-msg"></div>' +
     '<div class="btns"><div class="btn sm" data-act="bal-copy">📋 코드 복사</div><div class="btn sm alt" data-act="bal-save">📥 파일로 저장</div><div class="btn sm alt" data-act="bal-pick">📂 파일 고르기</div><div class="btn sm alt" data-act="bal-apply">✅ 코드 적용</div></div>' +
+    '<div class="vmsg">⚠️ 이 기기에서만 바뀐 수치는 새로고침하면 서버 값으로 돌아가요. 모두에게 적용하려면 아래 버튼을 눌러요.</div>' +
+    '<div class="btns"><div class="btn sm" data-act="bal-publish">☁️ 모든 사용자에게 적용</div><div class="btn sm alt" data-act="bal-pullsrv">☁️ 서버 수치 받기</div></div>' +
     '<input type="file" id="bal-file" accept=".json,application/json,text/plain" style="display:none"></div>' +
     '<div class="btns"><div class="btn sm alt" data-act="a-balreset">🧹 전부 기본값으로</div><div class="btn sm" data-act="a-back">← 관리자 화면</div></div></div>');
   const np = overlay.querySelector('.panel'); if (np) np.scrollTop = top;
@@ -1635,6 +1637,27 @@ function mergeRemote(r) {   // 양쪽 다 바뀐 경우: 단어는 합치고, �
   SYNC_BUSY = true; META = base; saveWords(); saveMeta(); SYNC_BUSY = false;
   return true;
 }
+// 밸런스 수치 공유: 관리자가 '모든 사용자에게 적용'을 누르면 서버(/balance)에 저장되고, 모든 기기가 접속할 때 받아 적용
+async function balPull() {
+  if (!syncOk()) return false;
+  try {
+    const r = await fetch(dbBase() + '/balance.json');
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (j && typeof j === 'object') { setBalance(j.values || {}); return true; }
+  } catch (e) {}
+  return false;
+}
+async function balPublish() {
+  if (!SYNC.uid) throw new Error('NOLOGIN');
+  await ensureToken();
+  const r = await fetch(dbBase() + '/balance.json?auth=' + encodeURIComponent(SYNC.idToken), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ at: Date.now(), values: balDiff() }) });
+  if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'NOADMIN' : 'DB' + r.status);
+}
+function balAuto() {   // 시작할 때/앱으로 돌아올 때 서버 수치를 받아 적용 (게임 중에는 하지 않음)
+  if (state === 'play' || state === 'levelup' || state === 'paused' || state === 'test' || ADMIN) return;
+  balPull();
+}
 let syncing = false, syncTimer = null;
 async function pushNow() { const pl = syncPayload(); await dbReq('PUT', pl); SYNC.lastSync = pl.at; SYNC.last = Date.now(); saveSync(); }
 // 서버와 맞추기: 서버가 더 새로우면 불러오고, 이 기기가 더 새로우면 올림
@@ -1665,7 +1688,7 @@ function syncTouch() {   // 단어장/기록이 바뀌면 잠깐 뒤 자동으�
 function syncAuto() {   // 시작할 때/앱으로 돌아올 때 자동으로 맞춤
   syncNow().then(r => { if (r && r.changed && onTitle) showTitle(); });
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && SYNC_READY) syncAuto(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && SYNC_READY) { syncAuto(); balAuto(); } });
 
 function showSync(msg, keepId) {
   let h = '<div class="panel"><h2>☁️ 계정 동기화</h2>';
@@ -1674,7 +1697,8 @@ function showSync(msg, keepId) {
   } else if (SYNC.uid) {
     const t = SYNC.last ? new Date(SYNC.last).toLocaleString('ko-KR') : '아직 없음';
     h += '<div class="vmsg">✅ <b>' + esc(SYNC.id) + '</b> 로그인 중 · 마지막 동기화: ' + esc(t) + '</div>' +
-      '<p style="font-size:calc(1.5 * var(--u));opacity:.85">단어장과 게임 기록이 바뀔 때마다 자동으로 저장돼요.<br>다른 기기에서 같은 아이디로 로그인하면 똑같이 불러와요.</p>';
+      '<p style="font-size:calc(1.5 * var(--u));opacity:.85">단어장과 게임 기록이 바뀔 때마다 자동으로 저장돼요.<br>다른 기기에서 같은 아이디로 로그인하면 똑같이 불러와요.</p>' +
+      (ADMIN ? '<div class="dbox"><small>🔧 관리자용: 이 계정의 UID (수치 공유 권한 규칙에 넣어요)</small><input readonly value="' + esc(SYNC.uid) + '" style="width:100%;margin-top:calc(.3 * var(--u))" onclick="this.select()"></div>' : '');
   } else {
     h += '<p style="font-size:calc(1.5 * var(--u));opacity:.85">아이디와 비밀번호로 로그인하면 PC와 폰에서 단어장이 똑같아져요.<br>처음이면 <b>새 계정 만들기</b>를 눌러요. (아이디: 영어/숫자 3~12자 · 비밀번호: 6자 이상)</p>' +
       '<div class="vadd"><input id="s-id" placeholder="아이디 (영어/숫자)" maxlength="12" autocomplete="username" autocapitalize="off" spellcheck="false" lang="en">' +
@@ -1939,6 +1963,17 @@ overlay.addEventListener('click', e => {
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'word-survivor-balance-' + todayStr() + '.json';
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       setBalMsg('파일로 저장했어요. 다른 곳에서 [파일 고르기] → [코드 적용]으로 똑같이 적용하세요.'); return;
+    }
+    if (act === 'bal-publish') {
+      setBalMsg('서버에 올리는 중…');
+      balPublish().then(() => setBalMsg('✅ 적용했어요! 모든 기기가 다음에 접속할 때(또는 앱으로 돌아올 때) 새 수치로 플레이해요.'))
+        .catch(e => setBalMsg(e.message === 'NOLOGIN' ? '먼저 시작 화면 ☁️ 계정 동기화에서 관리자 계정으로 로그인하세요.' : e.message === 'NOADMIN' ? '이 계정은 관리자 권한이 없어요. Firebase 규칙에 이 계정의 UID를 넣어야 해요.' : syncErrMsg(e)));
+      return;
+    }
+    if (act === 'bal-pullsrv') {
+      setBalMsg('서버에서 받는 중…');
+      balPull().then(ok => showBalance(null, ok ? '서버 수치를 받아 적용했어요.' : '서버에 저장된 수치가 없거나 연결에 실패했어요.'));
+      return;
     }
     if (act === 'bal-pick') { document.getElementById('bal-file').click(); return; }
     if (act === 'bal-apply') {
@@ -2369,6 +2404,7 @@ function update(dt) {
   for (const e of G.enemies) {
     const ex = p.x - e.x, ey = p.y - e.y, d = Math.hypot(ex, ey) || 1;
     let sp = e.slow > 0 ? e.speed * B.en_slow : e.speed;   // 얼음에 맞으면 느려짐
+    if (e.knockCd > 0) e.knockCd -= dt;
     if (e.stun > 0) { e.stun -= dt; sp = 0; }                // 회전 구슬에 맞으면 잠깐 멈칫
     e.slow = Math.max(0, (e.slow || 0) - dt);
     e.x += ex / d * sp * dt;
@@ -2431,8 +2467,10 @@ function update(dt) {
       for (const e of G.enemies) {
         if (e.hp > 0 && e.orbCd <= 0 && Math.hypot(e.x - ox, e.y - oy) < e.r + 10) { damageEnemy(e, B.orbit_dmg * dmgMul * OW('orbit') * (evoO ? B.orbit_evoMul : 1)); e.orbCd = B.orbit_hitCd;
           // 맞으면 살짝 밀려나며 주춤 (보스는 덜 밀림)
-          const kd = Math.hypot(e.x - p.x, e.y - p.y) || 1, kf = e.boss ? 0.35 : 1;
-          e.x += (e.x - p.x) / kd * B.orbit_knock * kf; e.y += (e.y - p.y) / kd * B.orbit_knock * kf; e.stun = B.orbit_stun * kf; }
+          if (!(e.knockCd > 0)) {   // 한 번 밀린 적은 일정 시간 동안 다시 밀리지 않음 (계속 밀려서 접근 못 하는 것 방지)
+            const kd = Math.hypot(e.x - p.x, e.y - p.y) || 1, kf = e.boss ? 0.35 : 1;
+            e.x += (e.x - p.x) / kd * B.orbit_knock * kf; e.y += (e.y - p.y) / kd * B.orbit_knock * kf; e.stun = B.orbit_stun * kf; e.knockCd = B.orbit_knockCd;
+          } }
       }
     }
   }
@@ -2948,7 +2986,7 @@ ADM = loadAdm();
 fitLayout();
 newGame();       // 타이틀 화면 뒤에 보일 초기 화면
 showTitle();
-SYNC_READY = true; syncAuto();   // 로그인되어 있으면 서버와 맞춤
+SYNC_READY = true; syncAuto(); balAuto();   // 로그인되어 있으면 서버와 맞춤
 requestAnimationFrame(loop);
 </script>
 </body>
