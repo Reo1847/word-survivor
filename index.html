@@ -305,7 +305,8 @@ function sndInit() {   // 브라우저 규칙상 첫 클릭/키 입력 때 켜�
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     SND.ctx = new AC();
-    SND.master = SND.ctx.createGain(); SND.master.gain.value = 0.5; SND.master.connect(SND.ctx.destination);
+    SND.master = SND.ctx.createGain(); SND.master.gain.value = 0.55;
+    const comp = SND.ctx.createDynamicsCompressor(); SND.master.connect(comp); comp.connect(SND.ctx.destination);   // 소리가 겹쳐도 깨지지 않게
   } catch (e) {}
 }
 window.addEventListener('pointerdown', sndInit, true);
@@ -326,21 +327,32 @@ function tone(freq, dur, o) {
   osc.connect(g); g.connect(SND.master);
   osc.start(t); osc.stop(t + dur + 0.03);
 }
-function noise(dur, o) {
+function noise(dur, o) {   // 바람/폭발/지직 같은 소리: type(필터 종류), freq→to(필터 이동), shape(커지는 모양), lfo(떨림)
   if (!SND.ctx || SND.muted) return;
   o = o || {};
-  const c = SND.ctx, t = c.currentTime + (o.delay || 0), n = Math.floor(c.sampleRate * dur);
+  const c = SND.ctx, t = c.currentTime + (o.delay || 0), n = Math.floor(c.sampleRate * dur), shape = o.shape || 'decay';
   const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  for (let i = 0; i < n; i++) {
+    const k = i / n, env = shape === 'swell' ? Math.sin(Math.PI * k) : shape === 'rise' ? k : shape === 'flat' ? 1 : 1 - k;
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
   const src = c.createBufferSource(); src.buffer = buf;
-  const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.freq || 1000;
-  const g = c.createGain(); g.gain.value = o.vol || 0.3;
-  src.connect(f); f.connect(g); g.connect(SND.master); src.start(t);
+  const f = c.createBiquadFilter(); f.type = o.type || 'lowpass';
+  f.frequency.setValueAtTime(o.freq || 1000, t); if (o.to) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t + dur);
+  if (o.q) f.Q.value = o.q;
+  const g = c.createGain(), vol = o.vol || 0.3;
+  src.connect(f); f.connect(g); g.connect(SND.master);
+  if (o.lfo) {   // 빙글빙글 도는 듯한 떨림
+    g.gain.value = vol * (1 - (o.depth || 0.8) / 2);
+    const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = o.lfo; lg.gain.value = vol * (o.depth || 0.8) / 2;
+    l.connect(lg); lg.connect(g.gain); l.start(t); l.stop(t + dur + 0.05);
+  } else g.gain.value = vol;
+  src.start(t);
 }
 function sfx(name, arg) {
   if (!SND.ctx || SND.muted) return;
   try {
-    const now = performance.now(), lim = { kill: 70, hit: 120, tick: 200, move: 30, zap: 100 }[name];
+    const now = performance.now(), lim = { kill: 70, hit: 120, tick: 200, move: 30, zap: 120, bolt: 100, orb: 80, pet: 140, wave: 100, spin: 250, fire: 300, frost: 300 }[name];
     if (lim) { if (now - (SND.last[name] || 0) < lim) return; SND.last[name] = now; }   // 너무 자주 울리지 않게
     switch (name) {
       case 'ok': {   // 제때 정답: 콤보가 쌓일수록 소리가 높아져요
@@ -351,18 +363,56 @@ function sfx(name, arg) {
       case 'tick': tone(1000, 0.05, { type: 'square', vol: 0.1 }); break;
       case 'timeout': tone(220, 0.35, { type: 'sawtooth', vol: 0.2, to: 150 }); break;
       case 'penalty': tone(170, 0.14, { type: 'sawtooth', vol: 0.18, to: 110 }); break;
-      case 'hit': noise(0.12, { vol: 0.3, freq: 900 }); tone(130, 0.15, { type: 'square', vol: 0.2, to: 70 }); break;
-      case 'kill': tone(480 + Math.random() * 120, 0.07, { type: 'triangle', vol: 0.09, to: 260 }); break;
+      case 'hit': noise(0.14, { vol: 0.35, freq: 800, to: 200 }); tone(120, 0.16, { type: 'square', vol: 0.2, to: 55 }); noise(0.05, { type: 'highpass', freq: 2500, vol: 0.15 }); break;   // 퍽! 하고 맞는 소리
+      case 'kill': tone(480 + Math.random() * 120, 0.07, { type: 'triangle', vol: 0.08, to: 260 }); noise(0.04, { type: 'bandpass', freq: 1400, q: 1.5, vol: 0.1 }); break;   // 팝
       case 'shield': tone(900, 0.18, { type: 'triangle', vol: 0.25, to: 1500 }); break;
       case 'boss': tone(110, 0.7, { type: 'sawtooth', vol: 0.25, to: 70 }); tone(165, 0.7, { type: 'sawtooth', vol: 0.18, to: 100, delay: 0.15 }); break;
       case 'bossdead': [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, { type: 'square', vol: 0.15, delay: i * 0.09 })); break;
-      case 'levelup': [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.14, { type: 'triangle', delay: i * 0.08 })); break;
+      case 'levelup': [523, 659, 784, 1047, 1319].forEach((f, i) => { tone(f, 0.16, { type: 'triangle', delay: i * 0.08 }); tone(f * 2, 0.2, { type: 'sine', vol: 0.06, delay: i * 0.08 + 0.02 }); }); noise(0.5, { type: 'highpass', freq: 5000, vol: 0.07, shape: 'swell', delay: 0.1 }); break;   // 반짝이는 레벨업
       case 'pick': tone(700, 0.08, { type: 'square', vol: 0.13 }); tone(1050, 0.12, { type: 'square', vol: 0.13, delay: 0.06 }); break;
       case 'ready': tone(880, 0.1, { type: 'triangle' }); tone(1320, 0.25, { type: 'triangle', delay: 0.1 }); break;
-      case 'ult': noise(0.7, { vol: 0.5, freq: 700 }); tone(90, 0.7, { type: 'sawtooth', vol: 0.35, to: 40 }); break;
-      case 'zap': noise(0.08, { vol: 0.15, freq: 4000 }); tone(900, 0.12, { type: 'sawtooth', vol: 0.1, to: 250 }); break;
-      case 'boom': tone(100, 0.25, { type: 'sine', vol: 0.3, to: 45 }); break;
-      case 'frost': tone(1400, 0.25, { type: 'sine', vol: 0.12, to: 900 }); break;
+      case 'ult':   // 단어 폭탄: 거대한 폭발
+        noise(0.06, { type: 'highpass', freq: 2000, vol: 0.45 }); noise(1.0, { vol: 0.6, freq: 2200, to: 80 });
+        tone(100, 0.9, { type: 'sawtooth', vol: 0.36, to: 30 }); tone(58, 1.0, { type: 'sine', vol: 0.45, to: 26 }); noise(0.8, { vol: 0.3, freq: 300, to: 60, delay: 0.2, shape: 'swell' }); break;
+      case 'bolt':   // 마법탄: 쉬잉 하는 마법 발사 (진화하면 묵직한 소리가 더해짐)
+        tone(1300, 0.09, { type: 'sine', vol: 0.09, to: 520 }); tone(2000, 0.05, { type: 'triangle', vol: 0.04, to: 900 });
+        if (arg) tone(700, 0.14, { type: 'sawtooth', vol: 0.05, to: 300 }); break;
+      case 'orb':   // 회전 구슬: 맑은 유리 방울이 부딪히는 소리
+        tone(1760, 0.12, { type: 'sine', vol: 0.07 }); tone(2637, 0.1, { type: 'sine', vol: 0.04, delay: 0.02 }); break;
+      case 'wave': case 'boom': {   // 충격파: 바닥을 내려치는 '쾅!' + 바닥을 타고 퍼져 나가는 울림
+        noise(0.05, { type: 'highpass', freq: 2500, vol: 0.3 });                              // 부딪히는 순간 '탁'
+        tone(160, 0.5, { type: 'sine', vol: 0.55, to: 34 });                                  // 묵직한 저음
+        noise(0.45, { vol: 0.55, freq: 500, to: 90 });                                        // 쿵
+        noise(0.5, { vol: 0.28, freq: 260, to: 70, delay: 0.12, shape: 'swell' });            // 퍼지는 울림 1
+        noise(0.4, { vol: 0.16, freq: 180, to: 60, delay: 0.3, shape: 'swell' });             // 퍼지는 울림 2
+        if (arg) tone(70, 0.6, { type: 'sawtooth', vol: 0.22, to: 28 });
+        break;
+      }
+      case 'zap': {   // 번개: 찌지직 + 우르릉
+        noise(0.05, { type: 'highpass', freq: 3000, vol: 0.25 });
+        tone(2600, 0.1, { type: 'sawtooth', vol: 0.09, to: 240 });
+        for (let k = 0; k < 4; k++) noise(0.025, { type: 'bandpass', freq: 2500 + k * 700, q: 2, vol: 0.2, delay: 0.03 + k * 0.045 });
+        noise(0.35, { vol: 0.15, freq: 220, to: 70, delay: 0.12, shape: 'swell' });
+        break;
+      }
+      case 'spin':   // 부메랑: 윙~윙~ 빙글빙글 도는 바람 소리
+        noise(1.15, { type: 'bandpass', freq: 500, to: 1100, q: 3, vol: 0.5, shape: 'swell', lfo: 16, depth: 0.9 });
+        tone(300, 1.0, { type: 'triangle', vol: 0.04, to: 450 }); break;
+      case 'fire': {   // 불 장판: 화르륵 점화 + 이글이글 + 탁탁 불꽃 튀는 소리
+        noise(0.3, { vol: 0.35, freq: 300, to: 900, shape: 'swell' }); tone(85, 0.35, { type: 'sine', vol: 0.25, to: 150 });
+        noise(1.0, { type: 'bandpass', freq: 420, q: 0.7, vol: 0.2, shape: 'swell', delay: 0.1, lfo: 7, depth: 0.7 });
+        for (let k = 0; k < 14; k++) noise(0.02, { type: 'highpass', freq: 2000 + Math.random() * 3000, vol: 0.08 + Math.random() * 0.12, delay: 0.05 + Math.random() * 1.0 });
+        break;
+      }
+      case 'frost': {   // 얼음 파동: 서늘한 바람 + 얼음 결정 땡그랑 + 얼음 갈라지는 '딱'
+        noise(0.45, { type: 'highpass', freq: 3000, to: 9000, vol: 0.18, shape: 'swell' });
+        [2093, 2637, 3136, 3951].forEach((f, i) => tone(f, 0.28, { type: 'sine', vol: 0.07, delay: i * 0.05, to: f * 0.96 }));
+        noise(0.03, { type: 'bandpass', freq: 2200, q: 3, vol: 0.3, delay: 0.1 }); noise(0.03, { type: 'bandpass', freq: 3200, q: 3, vol: 0.25, delay: 0.21 });
+        tone(300, 0.5, { type: 'triangle', vol: 0.05, to: 150 });
+        break;
+      }
+      case 'shieldup': tone(500, 0.25, { type: 'sine', vol: 0.15, to: 1200 }); tone(1500, 0.15, { type: 'triangle', vol: 0.08, delay: 0.18 }); break;   // 보호막이 다시 생길 때
+      case 'pet': tone(2200, 0.06, { type: 'triangle', vol: 0.05, to: 3000 }); tone(3300, 0.05, { type: 'sine', vol: 0.03, delay: 0.03 }); break;   // 요정: 반짝
       case 'clear': [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.25, delay: i * 0.13 })); break;
       case 'over': [392, 330, 262].forEach((f, i) => tone(f, 0.4, { type: 'triangle', vol: 0.25, delay: i * 0.25 })); break;
       case 'move': tone(600, 0.04, { type: 'square', vol: 0.07 }); break;
@@ -610,7 +660,7 @@ function balRegX(group, id, label, get, set) { BAL.push({ id, group, label, def:
   ['orbit', 'orbit_dmg', '기본 피해(1회)', 12], ['orbit', 'orbit_hitCd', '같은 적 재타격 간격(초)', 0.45], ['orbit', 'orbit_radius', '회전 반지름 Lv0', 62], ['orbit', 'orbit_radiusLv', '레벨당 반지름 증가', 4],
   ['orbit', 'orbit_evoMul', '진화 피해 배율', 1.5], ['orbit', 'orbit_evoRadius', '진화 반지름', 96], ['orbit', 'orbit_evoCnt', '진화 구슬 수', 10], ['orbit', 'orbit_knock', '맞은 적이 밀려나는 거리', 8], ['orbit', 'orbit_stun', '맞은 적이 주춤하는 시간(초)', 0.1], ['orbit', 'orbit_knockCd', '한 번 밀린 뒤 다시 안 밀리는 시간(초)', 2],
   ['wave', 'wave_dmg', '기본 피해', 24], ['wave', 'wave_radius', '범위 반지름 Lv0', 100], ['wave', 'wave_radiusLv', '레벨당 범위 증가', 18], ['wave', 'wave_cd', '발동 간격(초) Lv0', 3.6], ['wave', 'wave_cdLv', '레벨당 간격 감소(초)', 0.4],
-  ['wave', 'wave_evoMul', '진화 피해 배율', 1.5], ['wave', 'wave_evoRadius', '진화 범위 추가', 60], ['wave', 'wave_evoSlow', '진화 둔화 시간(초)', 2],
+  ['wave', 'wave_evoMul', '진화 피해 배율', 1.5], ['wave', 'wave_knock', '맞은 적이 밀려나는 거리', 18], ['wave', 'wave_evoRadius', '진화 범위 추가', 60], ['wave', 'wave_evoSlow', '진화 둔화 시간(초)', 2],
   ['lightning', 'lightning_dmg', '기본 피해(1회 튕김)', 20], ['lightning', 'lightning_cd', '발동 간격(초) Lv0', 2.4], ['lightning', 'lightning_cdLv', '레벨당 간격 감소(초)', 0.3], ['lightning', 'lightning_cdMin', '최소 간격(초)', 0.9],
   ['lightning', 'lightning_bounce', '튕김 횟수 (Lv0 기준, +레벨)', 2], ['lightning', 'lightning_range', '튕기는 거리', 170],
   ['lightning', 'lightning_evoMul', '진화 피해 배율', 1.6], ['lightning', 'lightning_evoCd', '진화 발동 간격(초)', 0.9], ['lightning', 'lightning_evoBounce', '진화 튕김 추가', 6], ['lightning', 'lightning_evoRange', '진화 튕기는 거리', 240],
@@ -1242,7 +1292,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v37 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v38 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -2453,6 +2503,7 @@ function update(dt) {
           G.shots.push({ x: p.x, y: p.y, vx: Math.cos(a) * B.bolt_speed, vy: Math.sin(a) * B.bolt_speed, dmg: B.bolt_dmg * dmgMul * OW('bolt') * (evoB ? B.bolt_evoMul : 1),
                          life: 1.6, pierce: evoB, hit: evoB ? new Set() : null, big: evoB });
         }
+        sfx('bolt', evoB ? 1 : 0);
         G.boltT = (evoB ? B.bolt_evoCd : Math.max(B.bolt_cdMin, B.bolt_cd - B.bolt_cdLv * (wb - 1))) * OC('bolt');
       }
     }
@@ -2478,7 +2529,7 @@ function update(dt) {
       const ox = p.x + Math.cos(a) * rad, oy = p.y + Math.sin(a) * rad;
       G.orbs.push({ x: ox, y: oy });
       for (const e of G.enemies) {
-        if (e.hp > 0 && e.orbCd <= 0 && Math.hypot(e.x - ox, e.y - oy) < e.r + 10) { damageEnemy(e, B.orbit_dmg * dmgMul * OW('orbit') * (evoO ? B.orbit_evoMul : 1)); e.orbCd = B.orbit_hitCd;
+        if (e.hp > 0 && e.orbCd <= 0 && Math.hypot(e.x - ox, e.y - oy) < e.r + 10) { damageEnemy(e, B.orbit_dmg * dmgMul * OW('orbit') * (evoO ? B.orbit_evoMul : 1)); e.orbCd = B.orbit_hitCd; sfx('orb');
           // 맞으면 살짝 밀려나며 주춤 (보스는 덜 밀림)
           if (!(e.knockCd > 0)) {   // 한 번 밀린 적은 일정 시간 동안 다시 밀리지 않음 (계속 밀려서 접근 못 하는 것 방지)
             const kd = Math.hypot(e.x - p.x, e.y - p.y) || 1, kf = e.boss ? 0.35 : 1;
@@ -2495,15 +2546,20 @@ function update(dt) {
     if (G.waveT <= 0) {
       const max = B.wave_radius + ww * B.wave_radiusLv + (evoW ? B.wave_evoRadius : 0);
       for (const e of G.enemies) {
-        if (Math.hypot(e.x - p.x, e.y - p.y) < max + e.r) { damageEnemy(e, B.wave_dmg * dmgMul * OW('wave') * (evoW ? B.wave_evoMul : 1)); if (evoW) e.slow = B.wave_evoSlow; }
+        if (Math.hypot(e.x - p.x, e.y - p.y) < max + e.r) { damageEnemy(e, B.wave_dmg * dmgMul * OW('wave') * (evoW ? B.wave_evoMul : 1)); if (evoW) e.slow = B.wave_evoSlow;
+          if (!(e.knockCd > 0)) { const kd = Math.hypot(e.x - p.x, e.y - p.y) || 1, kf = e.boss ? 0.35 : 1; e.x += (e.x - p.x) / kd * B.wave_knock * kf; e.y += (e.y - p.y) / kd * B.wave_knock * kf; e.knockCd = B.orbit_knockCd; } }
       }
-      G.waves.push({ x: p.x, y: p.y, r: 0, max, life: 0.4, t: 0 });
-      sfx('boom');
+      // 충격파: 쾅! 하고 내려친 자리에서 금이 가고 먼지가 튀며 파동이 퍼져 나감
+      const cracks = []; for (let k = 0; k < 9; k++) cracks.push({ a: k / 9 * 6.283 + Math.random() * 0.5, l: 0.5 + Math.random() * 0.5, s: Math.random() * 100 });
+      G.waves.push({ x: p.x, y: p.y, r: 0, max, life: 0.45, t: 0, cracks, evo: evoW });
+      G.shake = Math.max(G.shake || 0, 6 + ww * 1.2 + (evoW ? 3 : 0));
+      { const P = G.parts || (G.parts = []); for (let k = 0; k < 16 && P.length < 240; k++) { const a = Math.random() * 6.283, sp = 120 + Math.random() * 200; P.push({ x: p.x + Math.cos(a) * 14, y: p.y + Math.sin(a) * 14, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 30, life: 0.5 + Math.random() * 0.3, max: 0.8, r: 3 + Math.random() * 3, c: '150,125,105' }); } }
+      sfx('wave', evoW ? 1 : 0);
       G.waveT = Math.max(0.5, B.wave_cd - B.wave_cdLv * ww) * OC('wave');
     }
   }
   for (const w of G.waves) { w.t += dt; w.r = w.max * Math.min(1, w.t / w.life); }
-  G.waves = G.waves.filter(w => w.t < w.life + 0.15);
+  G.waves = G.waves.filter(w => w.t < w.life + 0.6);   // 금 간 자국은 파동이 지나간 뒤에도 잠깐 남음
 
   // --- 무기 4: 번개 (가장 가까운 적에서 시작해 근처 적들에게 튕김) ---
   const wl = G.weapons.lightning;
@@ -2540,6 +2596,7 @@ function update(dt) {
       const cnt = G.evo.boomerang ? B.boom_evoCnt : 1 + (wm >= 3 ? 1 : 0) + (wm >= 5 ? 1 : 0);
       const base = Math.atan2(near.y - p.y, near.x - p.x);
       for (let i = 0; i < cnt; i++) {
+        if (i === 0) sfx('spin');
         G.booms.push({ x: p.x, y: p.y, a: base + (i - (cnt - 1) / 2) * 0.55, t: 0, dur: 1.6, reach: B.boom_reach + B.boom_reachLv * wm + (G.evo.boomerang ? B.boom_evoReach : 0), hit: new Map() });
       }
     }
@@ -2565,6 +2622,7 @@ function update(dt) {
       G.fireT = (fe ? B.fire_evoCd : Math.max(B.fire_cdMin, B.fire_cd - B.fire_cdLv * wf)) * OC('fire');
       const spots = [tgt];
       if (fe && G.enemies.length > 1) spots.push(G.enemies[Math.floor(Math.random() * G.enemies.length)]);
+      sfx('fire');
       for (const t of spots) G.fires.push({ x: t.x, y: t.y, r: (B.fire_radius + B.fire_radiusLv * wf) * (fe ? B.fire_evoRadiusMul : 1), life: (B.fire_life + B.fire_lifeLv * wf) * (fe ? B.fire_evoLifeMul : 1), tick: 0, evo: fe });
     }
   }
@@ -2597,7 +2655,7 @@ function update(dt) {
   // --- 무기 8: 보호막 (한 번 막고, 시간이 지나면 다시 생김) ---
   if (G.weapons.shield > 0 && !G.shieldReady) {
     G.shieldCd -= dt;
-    if (G.shieldCd <= 0) { G.shieldReady = true; G.texts.push({ x: p.x, y: p.y - 26, t: '보호막 재생!', c: '#2a9df4', life: 0.9 }); }
+    if (G.shieldCd <= 0) { G.shieldReady = true; sfx('shieldup'); G.texts.push({ x: p.x, y: p.y - 26, t: '보호막 재생!', c: '#2a9df4', life: 0.9 }); }
   }
 
   // --- 무기 9: 요정 (플레이어 곁을 돌며 가까운 적을 자동으로 쏨) ---
@@ -2617,6 +2675,7 @@ function update(dt) {
         const t = nearestEnemy(pet.x, pet.y);
         if (!t) continue;
         const a = Math.atan2(t.y - pet.y, t.x - pet.x);
+        sfx('pet');
         G.shots.push({ x: pet.x, y: pet.y, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, dmg: (G.evo.pet ? B.pet_evoDmg : B.pet_dmg) * dmgMul * OW('pet'), life: 1.4 });
       }
     }
@@ -2906,15 +2965,32 @@ function render() {
   ctx.lineWidth = 10; ctx.strokeStyle = 'rgb(' + ringC + ')'; ctx.beginPath(); ctx.arc(cx, cy, 84, a1, a2); ctx.stroke();
   if (!over && !q.done) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx + Math.cos(a2) * 84, cy + Math.sin(a2) * 84, 4, 0, 7); ctx.fill(); }
 
-  // 3) 충격파
+  // 3) 충격파: 내려치는 순간 섬광 → 땅이 갈라지며 → 겹겹의 파동이 퍼져 나감
   for (const w of G.waves) {
-    const a = Math.max(0, 1 - Math.max(0, w.t - w.life) / 0.15) * (1 - w.r / w.max * 0.5);
-    if (w.r > 4) {
-      const g = ctx.createRadialGradient(w.x, w.y, w.r * .55, w.x, w.y, w.r); g.addColorStop(0, 'rgba(90,180,255,0)'); g.addColorStop(1, 'rgba(90,180,255,' + (a * .5) + ')');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.fill();
+    const fade = Math.max(0, 1 - Math.max(0, w.t - w.life) / 0.15) * (1 - w.r / w.max * 0.5);
+    const ca = Math.max(0, 1 - w.t / (w.life + 0.55)), prog = Math.min(1, w.t / w.life);   // 금 간 자국의 선명도 / 진행도
+    // 땅이 갈라진 자국 (번쩍이는 붉은 틈)
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const cr of w.cracks || []) {
+      const len = w.max * cr.l * Math.min(1, prog * 1.6), segs = Math.max(2, Math.round(len / 22));
+      const pts = [{ x: w.x, y: w.y }];
+      for (let k = 1; k <= segs; k++) { const d = len * k / segs, j = Math.sin(cr.s + k * 2.3) * 9; pts.push({ x: w.x + Math.cos(cr.a) * d - Math.sin(cr.a) * j, y: w.y + Math.sin(cr.a) * d + Math.cos(cr.a) * j }); }
+      for (const [lw, col] of [[7, 'rgba(70,40,25,' + (ca * .55) + ')'], [3.5, 'rgba(255,190,110,' + (ca * .9) + ')']]) {
+        ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.beginPath(); pts.forEach((q2, i) => i ? ctx.lineTo(q2.x, q2.y) : ctx.moveTo(q2.x, q2.y)); ctx.stroke();
+      }
     }
-    ctx.lineWidth = 11; ctx.strokeStyle = 'rgba(120,200,255,' + a + ')'; ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,' + a + ')'; ctx.beginPath(); ctx.arc(w.x, w.y, Math.max(1, w.r - 3), 0, Math.PI * 2); ctx.stroke();
+    // 내려치는 순간의 섬광
+    if (w.t < 0.18) { const k = 1 - w.t / 0.18; glow(w.x, w.y, 40 + w.max * .5 * (1 - k * .4), '255,235,190', k); ctx.fillStyle = 'rgba(255,255,255,' + (k * .8) + ')'; ctx.beginPath(); ctx.arc(w.x, w.y, 26 * k + 4, 0, 7); ctx.fill(); }
+    // 겹겹이 퍼지는 파동(메인 + 잔물결 둘)
+    for (const [sc, wd, al] of [[1, 11, 1], [.74, 6, .55], [.5, 4, .35]]) {
+      const rad = w.r * sc; if (rad < 3) continue;
+      if (sc === 1) {
+        const g = ctx.createRadialGradient(w.x, w.y, rad * .55, w.x, w.y, rad); g.addColorStop(0, 'rgba(255,200,120,0)'); g.addColorStop(1, 'rgba(255,170,90,' + (fade * .5) + ')');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(w.x, w.y, rad, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.lineWidth = wd; ctx.strokeStyle = (w.evo ? 'rgba(190,150,255,' : 'rgba(255,215,150,') + (fade * al) + ')'; ctx.beginPath(); ctx.arc(w.x, w.y, rad, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = Math.max(1.5, wd * .35); ctx.strokeStyle = 'rgba(255,255,255,' + (fade * al) + ')'; ctx.beginPath(); ctx.arc(w.x, w.y, Math.max(1, rad - wd * .4), 0, Math.PI * 2); ctx.stroke();
+    }
   }
 
   // 3-2) 불 장판 / 얼음 파동 (적 아래에 깔림)
