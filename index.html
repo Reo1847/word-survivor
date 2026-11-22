@@ -674,7 +674,8 @@ function balRegX(group, id, label, get, set) { BAL.push({ id, group, label, def:
   ['frost', 'frost_cd', '발동 간격(초) Lv0', 6.5], ['frost', 'frost_cdLv', '레벨당 간격 감소(초)', 0.6], ['frost', 'frost_cdMin', '최소 간격(초)', 3],
   ['frost', 'frost_evoDmg', '진화 피해', 18], ['frost', 'frost_evoRadius', '진화 반지름 추가', 80], ['frost', 'frost_evoSlowMul', '진화 둔화 시간 배율', 2.5], ['frost', 'frost_evoCdMul', '진화 간격 배율', 0.7],
   ['shield', 'shield_cd', '재생 시간(초) Lv0', 13], ['shield', 'shield_cdLv', '레벨당 재생 단축(초)', 1.8], ['shield', 'shield_cdMin', '최소 재생 시간(초)', 4], ['shield', 'shield_evoCdMul', '진화 재생 시간 배율', 0.5],
-  ['pet', 'pet_dmg', '기본 피해(1발)', 9], ['pet', 'pet_cd', '발사 간격(초) Lv0', 1.3], ['pet', 'pet_cdLv', '레벨당 간격 감소(초)', 0.12], ['pet', 'pet_cdMin', '최소 간격(초)', 0.5],
+  ['pet', 'pet_dmg', '기본 피해(1발)', 11], ['pet', 'pet_cd', '발사 간격(초) Lv0', 1.1], ['pet', 'pet_cdLv', '레벨당 간격 감소(초)', 0.12], ['pet', 'pet_cdMin', '최소 간격(초)', 0.5],
+  ['pet', 'pet_heal', '축복 회복량(요정 1마리당)', 2], ['pet', 'pet_healCd', '축복 주기(초)', 5], ['pet', 'pet_evoHeal', '진화 축복 회복량(1마리당)', 3], ['pet', 'pet_turn', '유도(회전) 속도', 4],
   ['pet', 'pet_evoDmg', '진화 피해', 14], ['pet', 'pet_evoCd', '진화 간격(초)', 0.35], ['pet', 'pet_evoCnt', '진화 요정 수', 4],
   ['up', 'up_dmg', '공격력 카드 1레벨당 (0.25 = +25%)', 0.25], ['up', 'up_armor', '방어도 카드 1레벨당 피해 감소 (0.1 = 10%)', 0.1], ['up', 'up_armorCap', '피해 감소 최대치 (0.75 = 75%)', 0.75],
   ['up', 'up_hp', '체력 카드 1레벨당 최대 체력', 20], ['up', 'up_speed', '이동 속도 카드 1레벨당 (0.12 = +12%)', 0.12],
@@ -843,7 +844,7 @@ const UPS = [
   { id: 'shield', icon: '🫧', name: '보호막', max: 5, lv: () => G.weapons.shield,
     desc: '적의 공격을 한 번 막아줘요. 쓰고 나면 시간이 지나 다시 생기고, 강화하면 더 빨리 돌아와요.', apply: () => { G.weapons.shield++; if (G.weapons.shield === 1) G.shieldReady = true; } },
   { id: 'pet',   icon: '🧚', name: '요정', max: 5, lv: () => G.weapons.pet,
-    desc: '곁에서 맴돌며 적을 쏴주는 요정! 강화하면 더 빨리 쏘고, 요정이 늘어나요.', apply: () => G.weapons.pet++ },
+    desc: '곁에서 맴돌며 적을 쫓아가 맞히는 별빛을 쏘고, 주기적으로 체력도 회복시켜 줘요!', apply: () => G.weapons.pet++ },
   { id: 'dmg',   icon: '⚔️', name: '공격력 증가', max: 8, lv: () => G.dmgLv,
     desc: '모든 공격의 데미지 +25%', apply: () => G.dmgLv++ },
   { id: 'armor', icon: '🛡️', name: '방어도 증가', max: 5, lv: () => G.armorLv,
@@ -867,7 +868,7 @@ const EVO_DEF = [
   { w: 'fire',      stat: 'hp',    name: '지옥불',       icon: '☄️', desc: '불 장판이 훨씬 넓어지고 두 군데에 동시에 깔려요.' },
   { w: 'frost',     stat: 'armor', name: '빙하기',       icon: '🧊', desc: '아주 넓은 얼음 파동! 적이 오래 꽁꽁 얼어요.' },
   { w: 'shield',    stat: 'armor', name: '수호 방벽',    icon: '🏰', desc: '보호막이 2번 막아주고 훨씬 빨리 돌아와요.' },
-  { w: 'pet',       stat: 'dmg',   name: '요정 군단',    icon: '🧚‍♀️', desc: '요정이 4마리로 늘고 더 빨리, 더 세게 쏴요.' },
+  { w: 'pet',       stat: 'dmg',   name: '요정 군단',    icon: '🧚‍♀️', desc: '요정이 4마리로 늘고 더 빨리, 더 세게 쏘며 회복도 커져요.' },
 ];
 const EVO_NAME = {};
 for (const d of EVO_DEF) {
@@ -1292,7 +1293,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v39 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v40 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -2509,6 +2510,10 @@ function update(dt) {
     }
   }
   for (const s of G.shots) {
+    if (s.pet) {   // 요정의 별빛 탄: 가까운 적을 향해 휘어 날아가는 유도탄
+      const tg = nearestEnemy(s.x, s.y);
+      if (tg) { const sp0 = Math.hypot(s.vx, s.vy) || 1, ta = Math.atan2(tg.y - s.y, tg.x - s.x), ca = Math.atan2(s.vy, s.vx); let da = ta - ca; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283; const na = ca + Math.max(-1, Math.min(1, da)) * Math.min(1, B.pet_turn * dt); s.vx = Math.cos(na) * sp0; s.vy = Math.sin(na) * sp0; }
+    }
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
     for (const e of G.enemies) {
       if (e.hp <= 0 || Math.hypot(e.x - s.x, e.y - s.y) >= e.r + (s.big ? 9 : 6)) continue;
@@ -2617,12 +2622,13 @@ function update(dt) {
   const wf = G.weapons.fire;
   if (wf > 0) {
     G.fireT -= wdt;
-    const tgt = G.fireT <= 0 ? nearestEnemy(p.x, p.y) : null;
+    const tgt = (G.fireT <= 0 && G.enemies.length) ? true : null;   // 적이 있을 때만 (자리는 랜덤)
     if (tgt) {
       const fe = G.evo.fire;
       G.fireT = (fe ? B.fire_evoCd : Math.max(B.fire_cdMin, B.fire_cd - B.fire_cdLv * wf)) * OC('fire');
-      const spots = [tgt];
-      if (fe && G.enemies.length > 1) spots.push(G.enemies[Math.floor(Math.random() * G.enemies.length)]);
+      const rndSpot = () => { const aa = Math.random() * 6.283, dd = 50 + Math.random() * 190; return { x: Math.max(30, Math.min(W - 30, p.x + Math.cos(aa) * dd)), y: Math.max(30, Math.min(H - 30, p.y + Math.sin(aa) * dd)) }; };   // 플레이어 주변 랜덤 위치
+      const spots = [rndSpot()];
+      if (fe) spots.push(rndSpot());
       sfx('fire');
       for (const t of spots) G.fires.push({ x: t.x, y: t.y, r: (B.fire_radius + B.fire_radiusLv * wf) * (fe ? B.fire_evoRadiusMul : 1), life: (B.fire_life + B.fire_lifeLv * wf) * (fe ? B.fire_evoLifeMul : 1), tick: 0, evo: fe });
     }
@@ -2646,7 +2652,14 @@ function update(dt) {
       for (const e of G.enemies) {
         if (Math.hypot(e.x - p.x, e.y - p.y) < rad + e.r) { damageEnemy(e, (G.evo.frost ? B.frost_evoDmg : B.frost_dmg) * dmgMul * OW('frost')); e.slow = (B.frost_slow + B.frost_slowLv * wi) * (G.evo.frost ? B.frost_evoSlowMul : 1); }
       }
-      const cr = []; for (let k = 0; k < Math.round(10 + rad / 9); k++) { const aa = Math.random() * 6.283, dd = Math.sqrt(Math.random()) * rad * 0.95; cr.push({ dx: Math.cos(aa) * dd, dy: Math.sin(aa) * dd * 0.9, s: 9 + Math.random() * 11, rot: (Math.random() - .5) * 1.2 + (Math.random() < .5 ? 0 : 0), type: Math.random() < 0.4 ? 1 : 0, d0: dd / rad * 0.3 }); }
+      const cr = [];   // 얼음 조각: 케릭터를 중심으로 바깥쪽을 향함. 바깥 고리일수록 크고 촘촘해서 범위 끝이 자연스럽게 보임
+      for (const [fr, per, sz] of [[0.97, 15, 17], [0.78, 20, 14], [0.58, 26, 12], [0.38, 34, 10], [0.2, 50, 8]]) {
+        const n0 = Math.max(4, Math.round(rad * fr * 6.283 / per));
+        for (let k = 0; k < n0; k++) {
+          const aa = k / n0 * 6.283 + Math.random() * 0.5, dd = rad * fr * (0.9 + Math.random() * 0.1);
+          cr.push({ dx: Math.cos(aa) * dd, dy: Math.sin(aa) * dd, s: sz * (0.7 + Math.random() * 0.6), rot: aa + Math.PI / 2 + (Math.random() - .5) * 0.35, d0: dd / rad * 0.3 });
+        }
+      }
       G.novas.push({ x: p.x, y: p.y, max: rad, t: 0, life: 0.5, vis: 1.4, cr });
       sfx('frost');
     }
@@ -2669,6 +2682,16 @@ function update(dt) {
     for (let i = 0; i < cnt; i++) {
       const a = G.petAngle + i * Math.PI * 2 / cnt;
       G.pets.push({ x: p.x + Math.cos(a) * 42, y: p.y + Math.sin(a) * 42 });
+    }
+    // 요정의 축복: 일정 시간마다 요정 한 마리당 체력을 회복시켜 줌
+    G.petHealT = (G.petHealT === undefined ? B.pet_healCd : G.petHealT) - wdt;
+    if (G.petHealT <= 0) {
+      G.petHealT = B.pet_healCd * OC('pet');
+      const hv = (G.evo.pet ? B.pet_evoHeal : B.pet_heal) * cnt;
+      if (p.hp < p.maxHp) { p.hp = Math.min(p.maxHp, p.hp + hv); G.texts.push({ x: p.x, y: p.y - 30, t: '🧚 +' + Math.round(hv), c: '#2ec4b6', life: 1 }); }
+      if (!G.parts) G.parts = [];
+      for (const pet of G.pets) for (let k = 0; k < 6 && G.parts.length < 240; k++) { const aa = Math.random() * 6.283; G.parts.push({ x: pet.x, y: pet.y, vx: (p.x - pet.x) * 1.6 + Math.cos(aa) * 30, vy: (p.y - pet.y) * 1.6 + Math.sin(aa) * 30 - 20, life: .5 + Math.random() * .3, max: .8, r: 2.5, c: '120,255,220' }); }
+      sfx('shieldup');
     }
     G.petT -= wdt;
     if (G.petT <= 0 && G.enemies.length) {
@@ -3000,21 +3023,21 @@ function render() {
     // 불 장판: 가장자리가 자연스럽게 번져 사라지고, 안에서 불꽃이 이글거리며 솟음
     const a = Math.min(1, f.life / 0.5), R = f.r * (1 + 0.04 * Math.sin(T * 9 + f.x)), sc = f.r / 48;
     ctx.globalAlpha = a;
-    let g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, R * 1.05);
-    g.addColorStop(0, 'rgba(255,240,150,.75)'); g.addColorStop(.35, 'rgba(255,150,40,.55)'); g.addColorStop(.7, 'rgba(230,60,10,.28)'); g.addColorStop(1, 'rgba(160,20,0,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, R * 1.05, 0, Math.PI * 2); ctx.fill();
+    let g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, R);
+    g.addColorStop(0, 'rgba(255,150,40,.20)'); g.addColorStop(.6, 'rgba(230,70,10,.12)'); g.addColorStop(1, 'rgba(160,20,0,0)');   // 바닥에 은은한 열기
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, R, 0, Math.PI * 2); ctx.fill();
     if (!f.seed) f.seed = Math.random() * 100;
-    const NF = 22;
-    for (let k = 0; k < NF; k++) {   // 불꽃 혀: 위치는 고정, 높이/흔들림은 계속 변함
-      const h0 = (k * 0.618 + f.seed) % 1, ang = (k / NF) * 6.283 + f.seed, rad = R * (0.15 + 0.65 * ((h0 * 7.3) % 1));
-      const fx = f.x + Math.cos(ang) * rad, fy = f.y + Math.sin(ang) * rad * 0.8;
-      const ph = T * (7 + (k % 4)) + k * 1.9, h = (16 + 14 * ((k * 37) % 10) / 10) * sc * (0.7 + 0.3 * Math.sin(ph)), w = (7 + 3 * ((k * 13) % 5) / 5) * sc, sw = Math.sin(ph * 0.7) * 4 * sc;
-      const fg = ctx.createRadialGradient(fx, fy - h * .25, 0, fx, fy - h * .25, Math.max(w, h * .6));
-      fg.addColorStop(0, 'rgba(255,190,80,.42)'); fg.addColorStop(.5, 'rgba(255,95,15,.30)'); fg.addColorStop(1, 'rgba(220,30,0,0)');
-      ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = fg;
-      ctx.beginPath(); ctx.moveTo(fx - w, fy); ctx.bezierCurveTo(fx - w * 1.1, fy - h * .5, fx - w * .3 + sw, fy - h * .7, fx + sw * 1.8, fy - h);
-      ctx.bezierCurveTo(fx + w * .3 + sw, fy - h * .7, fx + w * 1.1, fy - h * .5, fx + w, fy); ctx.bezierCurveTo(fx + w * .6, fy + w * .5, fx - w * .6, fy + w * .5, fx - w, fy); ctx.closePath(); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+    const NF = Math.round(16 + R / 2.2), fs = 0.8 + 0.5 * sc;   // 작은 불꽃을 범위 안에 고르게
+    for (let k = 0; k < NF; k++) {
+      const u = (k * 0.618034 + f.seed) % 1, rad = R * 0.92 * Math.sqrt((k + 0.5) / NF), ang = k * 2.39996 + f.seed;   // 해바라기 배치
+      const fx = f.x + Math.cos(ang) * rad, fy = f.y + Math.sin(ang) * rad * 0.85;
+      const ph = T * (6 + (k % 5)) + k * 1.9, edge = 1 - 0.5 * (rad / R) ** 2;
+      const h = (12 + 12 * u) * fs * edge * (0.65 + 0.35 * Math.sin(ph)), w = (4.2 + 2 * u) * fs, sw = Math.sin(ph * 0.7) * 2.5 * fs;
+      const fg = ctx.createLinearGradient(fx, fy, fx, fy - h);
+      fg.addColorStop(0, 'rgba(255,70,0,.85)'); fg.addColorStop(.5, 'rgba(255,150,30,.8)'); fg.addColorStop(1, 'rgba(255,230,120,.0)');
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(fx - w, fy); ctx.bezierCurveTo(fx - w * 1.1, fy - h * .5, fx - w * .3 + sw, fy - h * .75, fx + sw * 1.8, fy - h);
+      ctx.bezierCurveTo(fx + w * .3 + sw, fy - h * .75, fx + w * 1.1, fy - h * .5, fx + w, fy); ctx.bezierCurveTo(fx + w * .5, fy + w * .5, fx - w * .5, fy + w * .5, fx - w, fy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,170,.55)'; ctx.beginPath(); ctx.ellipse(fx + sw * .4, fy - h * .28, w * .38, h * .26, 0, 0, 7); ctx.fill();   // 불꽃 속 밝은 심지
     }
     for (let k = 0; k < 6; k++) {   // 위로 날아오르는 불티
       const ph = (T * 0.9 + k / 6 + f.seed) % 1, ang = k * 2.4 + f.seed, ex = f.x + Math.cos(ang) * R * .6 * ((k * 31) % 10) / 10, ey = f.y + Math.sin(ang) * R * .4 - ph * 38 * sc;
@@ -3034,14 +3057,11 @@ function render() {
       const grow = Math.min(1, (rad - d) / 30 + 0.1) * Math.min(1, (n.t - c.d0) > 0 ? (n.t - c.d0) / 0.2 : 0), al = fa * grow; if (al <= 0.01) continue;
       const x = n.x + c.dx, y = n.y + c.dy, sz = c.s * (0.4 + 0.6 * grow);
       ctx.save(); ctx.translate(x, y); ctx.rotate(c.rot); ctx.globalAlpha = al;
-      if (c.type) {   // 눈꽃 결정(6방향)
-        ctx.strokeStyle = 'rgba(225,248,255,.95)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
-        for (let q = 0; q < 6; q++) { ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(sz, 0); ctx.moveTo(sz * .55, 0); ctx.lineTo(sz * .78, sz * .2); ctx.moveTo(sz * .55, 0); ctx.lineTo(sz * .78, -sz * .2); ctx.stroke(); }
-      } else {   // 뾰족한 얼음 조각
-        const fg = ctx.createLinearGradient(0, -sz, 0, sz * .4); fg.addColorStop(0, 'rgba(240,252,255,.95)'); fg.addColorStop(1, 'rgba(110,190,245,.75)');
-        ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(0, -sz * 1.5); ctx.lineTo(sz * .42, 0); ctx.lineTo(sz * .15, sz * .45); ctx.lineTo(-sz * .3, sz * .35); ctx.lineTo(-sz * .42, -sz * .05); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.moveTo(0, -sz * 1.5); ctx.lineTo(sz * .12, -sz * .1); ctx.lineTo(-sz * .1, -sz * .1); ctx.closePath(); ctx.fill();
+      {   // 뾰족한 얼음 조각 (끝이 바깥쪽)
+        const fg = ctx.createLinearGradient(0, -sz * 1.6, 0, sz * .5); fg.addColorStop(0, 'rgba(245,253,255,.95)'); fg.addColorStop(1, 'rgba(110,190,245,.7)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(0, -sz * 1.6); ctx.lineTo(sz * .38, -sz * .1); ctx.lineTo(sz * .22, sz * .5); ctx.lineTo(-sz * .22, sz * .5); ctx.lineTo(-sz * .38, -sz * .1); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.moveTo(0, -sz * 1.6); ctx.lineTo(sz * .1, -sz * .1); ctx.lineTo(-sz * .12, -sz * .1); ctx.closePath(); ctx.fill();
       }
       ctx.restore();
     }
