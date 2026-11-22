@@ -994,8 +994,8 @@ function dropGear(n) {
     G.drops.push(it);
     let eqd = false;
     const curEq = META.gear.bag.find(x => x.id === META.gear.eq[it.slot]);
-    if (!curEq || it.val > curEq.val) { META.gear.eq[it.slot] = it.id; eqd = true; }   // 비어 있거나 더 좋으면 자동 착용
-    msg = '🎁 ' + GEAR_INFO[it.slot].icon + ' ' + gearNameR(it) + ' (' + RARITY[it.rar].name + ') ' + gearText(it.slot, it.val) + (eqd ? ' · 착용!' : '');
+    if (!curEq) { META.gear.eq[it.slot] = it.id; eqd = true; }   // 칸이 비어 있을 때만 바로 착용 (더 좋은 장비여도 직접 바꿔 끼기)
+    msg = '🎁 ' + GEAR_INFO[it.slot].icon + ' ' + gearNameR(it) + ' (' + RARITY[it.rar].name + ') ' + gearText(it.slot, it.val) + (eqd ? ' · 착용!' : (curEq && it.val > curEq.val ? ' · 더 좋아요! 장비창에서 바꿔 껴요' : ''));
   }
   saveMeta();
   applyGear(false);
@@ -1190,7 +1190,7 @@ function finishTest() {
     if (n >= TEST_N) {
       const it = rollGear(7);
       if (META.gear.bag.length >= BAG_MAX) { META.stars += sellVal(it); reward += ' · 가방이 가득 차서 장비는 ⭐' + sellVal(it) + '로 바뀌었어요'; }
-      else { META.gear.bag.push(it); { const ce = META.gear.bag.find(x => x.id === META.gear.eq[it.slot]); if (!ce || it.val > ce.val) META.gear.eq[it.slot] = it.id; } reward += '<br>🎁 ' + gearHtml(it); }
+      else { META.gear.bag.push(it); { const ce = META.gear.bag.find(x => x.id === META.gear.eq[it.slot]); if (!ce) META.gear.eq[it.slot] = it.id; } reward += '<br>🎁 ' + gearHtml(it); }
     }
     saveMeta(); sfx('clear');
   } else sfx('over');
@@ -1293,7 +1293,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v42 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v44 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -3025,8 +3025,21 @@ function render() {
     if (!f.seed) f.seed = Math.random() * 100;
     ctx.globalAlpha = a; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     const g = ctx.createRadialGradient(f.x, f.y, R0 * .5, f.x, f.y, R0 * 1.1);   // 안쪽에 아주 은은한 열기
-    g.addColorStop(0, 'rgba(255,120,20,0)'); g.addColorStop(.8, 'rgba(255,130,30,.10)'); g.addColorStop(1, 'rgba(255,100,10,0)');
+    g.addColorStop(0, 'rgba(255,120,20,0)'); g.addColorStop(.8, 'rgba(255,130,30,.14)'); g.addColorStop(1, 'rgba(255,100,10,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, R0 * 1.1, 0, Math.PI * 2); ctx.fill();
+    {   // 고리 안쪽의 은은한 불길: 부드러운 불꽃이 아른아른 일렁임 (진하지 않게)
+      const NI = Math.round(6 + R0 / 9), fs = 0.8 + 0.5 * sc;
+      for (let k2 = 0; k2 < NI; k2++) {
+        const u = (k2 * 0.618034 + f.seed) % 1, rad = R0 * 0.8 * Math.sqrt((k2 + 0.5) / NI), ang = k2 * 2.39996 + f.seed;
+        const fx = f.x + Math.cos(ang) * rad, fy = f.y + Math.sin(ang) * rad * 0.85;
+        const ph = T * (3.2 + (k2 % 4) * 0.8) + k2 * 2.3, h = (20 + 22 * u) * fs * (0.5 + 0.5 * Math.sin(ph)), w = (2.6 + 1.6 * u) * fs, sw = Math.sin(ph * 0.8) * 5 * fs;
+        if (h < 3) continue;
+        const fg = ctx.createLinearGradient(fx, fy, fx, fy - h);
+        fg.addColorStop(0, 'rgba(255,120,20,.2)'); fg.addColorStop(.5, 'rgba(255,180,60,.14)'); fg.addColorStop(1, 'rgba(255,235,140,0)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(fx - w, fy); ctx.bezierCurveTo(fx - w * 1.3, fy - h * .3, fx - w * .2 + sw * .5, fy - h * .6, fx + sw * 2.2, fy - h);
+        ctx.bezierCurveTo(fx + w * .2 + sw * .8, fy - h * .6, fx + w * 1.3, fy - h * .3, fx + w, fy); ctx.bezierCurveTo(fx + w * .5, fy + w * .4, fx - w * .5, fy + w * .4, fx - w, fy); ctx.closePath(); ctx.fill();
+      }
+    }
     const N = 72;
     const strand = (ph, sp, amp) => {   // 물결치는 불의 가닥 하나 (각도마다 반지름이 계속 출렁임)
       const pts = [];
