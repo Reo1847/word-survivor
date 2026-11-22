@@ -589,7 +589,13 @@ const GEAR_MULT = RARITY.map(r => r.mult);
 // 등급(브론즈~아크네메시스)이 높을수록 그 등급에서 얻는 장비 수치가 더 좋아짐
 [1, 1.25, 1.55, 2, 2.6, 3.4, 4.4, 5.6].forEach((m, i) => { RANKS[i].gear = m; });
 const rkOf = it => Math.max(0, Math.min(RANKS.length - 1, it.rk | 0));
-const sellVal = it => Math.round(RARITY[it.rar].sell * (1 + 0.4 * rkOf(it)));   // 높은 등급 장비는 분해 별도 더 많이
+const UP_MAX = 3, UP_RATE = 0.2, UP_COST = [4, 8, 16];   // 강화: 최대 +3, 단계마다 기본 수치의 +20%, 비용 = (분해 값) × 4 / 8 / 16 (별)
+const upOf = it => Math.max(0, Math.min(UP_MAX, it.up | 0));
+const baseSell = it => Math.round(RARITY[it.rar].sell * (1 + 0.4 * rkOf(it)));
+const upCost = it => baseSell(it) * UP_COST[upOf(it)];   // 지금 단계에서 다음 단계로 올리는 비용
+const upSpent = it => { let t = 0; for (let i = 0; i < upOf(it); i++) t += baseSell(it) * UP_COST[i]; return t; };
+const effVal = it => { const v = it.val * (1 + UP_RATE * upOf(it)); return GEAR_INFO[it.slot].key === 'regen' ? Math.round(v * 10) / 10 : Math.round(v); };   // 강화가 반영된 실제 수치
+const sellVal = it => baseSell(it) + Math.floor(upSpent(it) / 2);   // 높은 등급 장비는 분해 별도 더 많이, 강화에 쓴 별의 절반은 돌려받음
 const rkTag = it => rkOf(it) > 0 ? RANKS[rkOf(it)].icon : '';
 const BOSS_DROP_ODDS = [[75, 22, 3, 0], [65, 28, 6, 1], [55, 32, 11, 2], [45, 35, 16, 4], [35, 37, 22, 6], [25, 38, 27, 10], [15, 37, 33, 15], [8, 32, 38, 22], [3, 27, 40, 30], [0, 20, 42, 38]];   // 보스 1~5번째가 주는 등급 확률(%)
 const BAG_MAX = 60;
@@ -606,7 +612,7 @@ function cleanGear(g) {   // 저장/가져오기 값을 안전하게 정리
           !Number.isFinite(it.val) || !Number.isInteger(it.id) || it.id < 1 || ids.has(it.id)) continue;
       const rk = Number.isInteger(it.rk) && it.rk >= 0 && it.rk < RANKS.length ? it.rk : 0;
       const max = GEAR_BASE[it.slot] * GEAR_MULT[it.rar] * RANKS[rk].gear * 1.15;
-      r.bag.push({ id: it.id, slot: it.slot, rar: it.rar, rk, val: Math.max(0, Math.min(max, it.val)) });
+      r.bag.push({ id: it.id, slot: it.slot, rar: it.rar, rk, val: Math.max(0, Math.min(max, it.val)), up: Number.isInteger(it.up) && it.up > 0 ? Math.min(UP_MAX, it.up) : 0 });
       ids.add(it.id);
       if (r.bag.length >= BAG_MAX) break;
     }
@@ -624,7 +630,7 @@ function calcGear(withChar = true) {
     const it = META.gear.bag.find(x => x.id === META.gear.eq[sl]);
     if (!it) continue;
     const g = GEAR_INFO[sl];
-    t[g.key] += g.pct ? it.val / 100 : it.val;
+    t[g.key] += g.pct ? effVal(it) / 100 : effVal(it);
   }
   return t;
 }
@@ -637,11 +643,11 @@ function rollGear(bossNo) {   // 보스 번호(1~5)에 맞는 등급으로 장�
   const rk = Math.max(0, Math.min(RANKS.length - 1, META.rank | 0));   // 지금 도전 중인 등급이 높을수록 수치가 좋은 장비
   let val = g.base * RARITY[rar].mult * RANKS[rk].gear * (0.9 + Math.random() * 0.2);
   val = g.key === 'regen' ? Math.round(val * 10) / 10 : Math.round(val);
-  return { id: META.gear.next++, slot, rar, rk, val };
+  return { id: META.gear.next++, slot, rar, rk, val, up: 0 };
 }
 const gearName = it => GEAR_INFO[it.slot].names[it.rar];
-const gearNameR = it => (rkTag(it) ? rkTag(it) + ' ' : '') + gearName(it);   // 등급 아이콘이 붙은 이름
-const gearHtml = it => '<span style="color:' + RARITY[it.rar].color + '">' + GEAR_INFO[it.slot].icon + ' [' + RARITY[it.rar].name + '] ' + gearNameR(it) + '</span> <small style="display:inline;opacity:.85">' + gearText(it.slot, it.val) + '</small>';
+const gearNameR = it => (rkTag(it) ? rkTag(it) + ' ' : '') + gearName(it) + (upOf(it) ? ' +' + upOf(it) : '');   // 등급 아이콘이 붙은 이름
+const gearHtml = it => '<span style="color:' + RARITY[it.rar].color + '">' + GEAR_INFO[it.slot].icon + ' [' + RARITY[it.rar].name + '] ' + gearNameR(it) + '</span> <small style="display:inline;opacity:.85">' + gearText(it.slot, effVal(it)) + '</small>';
 
 // ---------- 밸런스 수치표: 게임 속 숫자들을 한곳에 모음 (관리자 화면에서 보고 고칠 수 있음) ----------
 const BAL_KEY = 'wordSurvivorBalance';
@@ -995,7 +1001,7 @@ function dropGear(n) {
     let eqd = false;
     const curEq = META.gear.bag.find(x => x.id === META.gear.eq[it.slot]);
     if (!curEq) { META.gear.eq[it.slot] = it.id; eqd = true; }   // 칸이 비어 있을 때만 바로 착용 (더 좋은 장비여도 직접 바꿔 끼기)
-    msg = '🎁 ' + GEAR_INFO[it.slot].icon + ' ' + gearNameR(it) + ' (' + RARITY[it.rar].name + ') ' + gearText(it.slot, it.val) + (eqd ? ' · 착용!' : (curEq && it.val > curEq.val ? ' · 더 좋아요! 장비창에서 바꿔 껴요' : ''));
+    msg = '🎁 ' + GEAR_INFO[it.slot].icon + ' ' + gearNameR(it) + ' (' + RARITY[it.rar].name + ') ' + gearText(it.slot, effVal(it)) + (eqd ? ' · 착용!' : (curEq && effVal(it) > effVal(curEq) ? ' · 더 좋아요! 장비창에서 바꿔 껴요' : ''));
   }
   saveMeta();
   applyGear(false);
@@ -1278,7 +1284,7 @@ function showTitle() {
   let eqs = '';
   for (const sl of GEAR_SLOTS) {
     const it = META.gear.bag.find(x => x.id === META.gear.eq[sl]), g = GEAR_INFO[sl];
-    eqs += it ? '<div class="drow"><span style="color:' + RARITY[it.rar].color + '">' + g.icon + ' ' + gearNameR(it) + '</span><i>' + gearText(sl, it.val) + '</i></div>'
+    eqs += it ? '<div class="drow"><span style="color:' + RARITY[it.rar].color + '">' + g.icon + ' ' + gearNameR(it) + '</span><i>' + gearText(sl, effVal(it)) + '</i></div>'
               : '<div class="drow" style="opacity:.4"><span>' + g.icon + ' ' + g.slot + '</span><i>비어 있음</i></div>';
   }
   const rkc = META.rankClears[META.rank];
@@ -1293,7 +1299,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v44 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v45 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -1555,12 +1561,19 @@ function showGear(msg) {
     const cur = bag.find(x => x.id === eq[sl]);
     tabs += '<div class="wchip' + (gearTab === sl ? ' sel' : '') + '" data-act="g-tab" data-id="' + sl + '" ' + (cur ? 'style="box-shadow:inset 0 -3px 0 ' + RARITY[cur.rar].color + '"' : '') + '>' + GEAR_INFO[sl].icon + ' ' + GEAR_INFO[sl].slot + (cur ? ' ✔' : '') + '</div>';
   }
-  const items = bag.filter(x => x.slot === gearTab).sort((a, b) => b.rar - a.rar || b.val - a.val);
+  const items = bag.filter(x => x.slot === gearTab).sort((a, b) => b.rar - a.rar || effVal(b) - effVal(a));
   let rows = '';
+  const curItem = bag.find(x => x.id === eq[gearTab]);
   for (const it of items) {
-    const on = eq[gearTab] === it.id;
-    rows += '<div class="srow"><div class="sic">' + GEAR_INFO[it.slot].icon + '</div><div class="sinfo"><b style="color:' + RARITY[it.rar].color + '">[' + RARITY[it.rar].name + '] ' + gearNameR(it) + (on ? ' ✔ 착용 중' : '') + '</b><small>' + gearText(it.slot, it.val) + '</small></div>' +
-      (on ? '<div class="sbuy" style="background:#4dd0ff" data-act="g-un" data-id="' + it.id + '">해제</div>' : '<div class="sbuy" data-act="g-eq" data-id="' + it.id + '">착용</div>') +
+    const on = eq[gearTab] === it.id, ev = effVal(it), up = upOf(it);
+    let line = gearText(it.slot, ev) + (up ? ' <span style="opacity:.75">(기본 ' + gearText(it.slot, it.val).replace(GEAR_INFO[it.slot].stat + ' ', '') + ' → 강화 +' + up + ')</span>' : '');
+    if (!on && curItem) {   // 지금 끼고 있는 장비와 비교
+      const d = ev - effVal(curItem), ds = (GEAR_INFO[it.slot].key === 'regen' ? Math.abs(d).toFixed(1) : Math.abs(Math.round(d))) + (GEAR_INFO[it.slot].pct ? '%' : '');
+      line += '<br><span style="color:' + (d > 0 ? '#2e9e5b' : d < 0 ? '#e05260' : '#888') + ';font-weight:700">' + (d > 0 ? '▲ 착용 중보다 +' + ds + ' 좋아요' : d < 0 ? '▼ 착용 중보다 -' + ds : '＝ 착용 중과 같아요') + '</span>';
+    }
+    const upBtn = up >= UP_MAX ? '<div class="sbuy" style="background:#b0b0b0">강화 MAX</div>' : '<div class="sbuy" style="background:#ffb703;color:#4a3000" data-act="g-up" data-id="' + it.id + '">강화 +' + (up + 1) + ' ⭐' + upCost(it) + '</div>';
+    rows += '<div class="srow"><div class="sic">' + GEAR_INFO[it.slot].icon + '</div><div class="sinfo"><b style="color:' + RARITY[it.rar].color + '">[' + RARITY[it.rar].name + '] ' + gearNameR(it) + (on ? ' ✔ 착용 중' : '') + '</b><small>' + line + '</small></div>' +
+      (on ? '<div class="sbuy" style="background:#4dd0ff" data-act="g-un" data-id="' + it.id + '">해제</div>' : '<div class="sbuy" data-act="g-eq" data-id="' + it.id + '">착용</div>') + upBtn +
       '<div class="sbuy" style="background:#ff8fa3" data-act="g-sell" data-id="' + it.id + '">분해 ⭐' + sellVal(it) + '</div></div>';
   }
   if (!rows) rows = '<div class="list">아직 ' + GEAR_INFO[gearTab].slot + ' 장비가 없어요. 보스를 쓰러뜨리면 떨어져요!</div>';
@@ -2108,10 +2121,18 @@ overlay.addEventListener('click', e => {
     return;
   }
   if (act === 'g-tab') { gearTab = t.dataset.id; showGear(''); return; }
-  if (act === 'g-eq' || act === 'g-un' || act === 'g-sell') {
+  if (act === 'g-eq' || act === 'g-un' || act === 'g-sell' || act === 'g-up') {
     const it = META.gear.bag.find(x => x.id === Number(t.dataset.id));
     if (!it) { showGear(''); return; }
     if (act === 'g-eq') { META.gear.eq[it.slot] = it.id; saveMeta(); sfx('buy'); showGear(gearName(it) + ' 착용!'); return; }
+    if (act === 'g-up') {   // 별로 강화: 실패 없이 +1씩, 최대 +3
+      if (upOf(it) >= UP_MAX) { showGear('이미 최대 강화예요!'); return; }
+      const cost = upCost(it);
+      if (META.stars < cost) { sfx('error'); showGear('별이 부족해요! (⭐' + cost + ' 필요, 지금 ⭐' + META.stars + ')'); return; }
+      META.stars -= cost; it.up = upOf(it) + 1; saveMeta(); sfx('levelup');
+      showGear('✨ ' + gearNameR(it) + ' 강화 성공! ' + gearText(it.slot, effVal(it)));
+      return;
+    }
     if (act === 'g-un') { delete META.gear.eq[it.slot]; saveMeta(); showGear(gearName(it) + ' 해제'); return; }
     if (!t.dataset.armed) { t.dataset.armed = '1'; t.textContent = '정말? 한 번 더!'; return; }   // 실수로 분해하지 않게 두 번 눌러야 함
     if (META.gear.eq[it.slot] === it.id) delete META.gear.eq[it.slot];
