@@ -1293,7 +1293,7 @@ function showTitle() {
     '<div class="btns"><div class="btn" data-act="modes">게임 시작</div><div class="btn alt" data-act="ranks">🏅 등급 선택</div></div>' +
     '<div class="btns" style="margin-top:calc(1.4 * var(--u))"><div class="btn sm alt" data-act="shop">⭐ 성장 상점</div><div class="btn sm alt" data-act="gear">🎒 장비 (' + META.gear.bag.length + ')</div><div class="btn sm alt" data-act="chars">🧙 캐릭터</div><div class="btn sm alt" data-act="vocab">📖 단어장 (' + WORDS.length + '개)</div><div class="btn sm alt" data-act="sync">' + (SYNC.uid ? '☁️ ' + esc(SYNC.id) : '☁️ 계정 동기화') + '</div><div class="btn sm alt" data-act="backup">💾 백업·옮기기</div><div class="btn sm alt" data-act="help">❓ 방법</div></div>' +
     (STORAGE_OK ? '' : '<p style="color:#ffb703;font-size:calc(1.6 * var(--u));margin-top:calc(1 * var(--u))">⚠ 이 방식으로 연 화면에서는 기록이 저장되지 않아요. 💾 백업으로 옮기거나 파일을 직접 크롬으로 열어 주세요.</p>') +
-    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v40 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
+    '<p style="font-size:calc(1.2 * var(--u));opacity:.55;margin-top:calc(1 * var(--u))">v41 · 관리자 모드 <span data-act="admin" style="cursor:pointer;opacity:.7" title="관리자">🔧</span></p></div>');
   onTitle = true;
 }
 // ---------- 관리자 화면 ----------
@@ -2626,7 +2626,7 @@ function update(dt) {
     if (tgt) {
       const fe = G.evo.fire;
       G.fireT = (fe ? B.fire_evoCd : Math.max(B.fire_cdMin, B.fire_cd - B.fire_cdLv * wf)) * OC('fire');
-      const rndSpot = () => { const aa = Math.random() * 6.283, dd = 50 + Math.random() * 190; return { x: Math.max(30, Math.min(W - 30, p.x + Math.cos(aa) * dd)), y: Math.max(30, Math.min(H - 30, p.y + Math.sin(aa) * dd)) }; };   // 플레이어 주변 랜덤 위치
+      const rndSpot = () => { return { x: 50 + Math.random() * (W - 100), y: 50 + Math.random() * (H - 100) }; };   // 맵 전체에서 랜덤 위치
       const spots = [rndSpot()];
       if (fe) spots.push(rndSpot());
       sfx('fire');
@@ -3024,24 +3024,24 @@ function render() {
     const a = Math.min(1, f.life / 0.5), R = f.r * (1 + 0.04 * Math.sin(T * 9 + f.x)), sc = f.r / 48;
     ctx.globalAlpha = a;
     let g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, R);
-    g.addColorStop(0, 'rgba(255,150,40,.20)'); g.addColorStop(.6, 'rgba(230,70,10,.12)'); g.addColorStop(1, 'rgba(160,20,0,0)');   // 바닥에 은은한 열기
+    g.addColorStop(0, 'rgba(255,150,40,.12)'); g.addColorStop(.6, 'rgba(230,70,10,.07)'); g.addColorStop(1, 'rgba(160,20,0,0)');   // 바닥에 은은한 열기
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, f.y, R, 0, Math.PI * 2); ctx.fill();
     if (!f.seed) f.seed = Math.random() * 100;
-    const NF = Math.round(16 + R / 2.2), fs = 0.8 + 0.5 * sc;   // 작은 불꽃을 범위 안에 고르게
+    const NF = Math.round(4 + R / 9), fs = 0.9 + 0.5 * sc;   // 작은 불꽃을 범위 안에 고르게
     for (let k = 0; k < NF; k++) {
       const u = (k * 0.618034 + f.seed) % 1, rad = R * 0.92 * Math.sqrt((k + 0.5) / NF), ang = k * 2.39996 + f.seed;   // 해바라기 배치
       const fx = f.x + Math.cos(ang) * rad, fy = f.y + Math.sin(ang) * rad * 0.85;
       const ph = T * (6 + (k % 5)) + k * 1.9, edge = 1 - 0.5 * (rad / R) ** 2;
-      const h = (12 + 12 * u) * fs * edge * (0.65 + 0.35 * Math.sin(ph)), w = (4.2 + 2 * u) * fs, sw = Math.sin(ph * 0.7) * 2.5 * fs;
+      const h = (14 + 12 * u) * fs * edge * (0.65 + 0.35 * Math.sin(ph)), w = (4.2 + 2 * u) * fs, sw = Math.sin(ph * 0.7) * 2.5 * fs;
       const fg = ctx.createLinearGradient(fx, fy, fx, fy - h);
-      fg.addColorStop(0, 'rgba(255,70,0,.85)'); fg.addColorStop(.5, 'rgba(255,150,30,.8)'); fg.addColorStop(1, 'rgba(255,230,120,.0)');
+      fg.addColorStop(0, 'rgba(255,90,10,.38)'); fg.addColorStop(.5, 'rgba(255,160,40,.3)'); fg.addColorStop(1, 'rgba(255,230,120,0)');
       ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(fx - w, fy); ctx.bezierCurveTo(fx - w * 1.1, fy - h * .5, fx - w * .3 + sw, fy - h * .75, fx + sw * 1.8, fy - h);
       ctx.bezierCurveTo(fx + w * .3 + sw, fy - h * .75, fx + w * 1.1, fy - h * .5, fx + w, fy); ctx.bezierCurveTo(fx + w * .5, fy + w * .5, fx - w * .5, fy + w * .5, fx - w, fy); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,240,170,.55)'; ctx.beginPath(); ctx.ellipse(fx + sw * .4, fy - h * .28, w * .38, h * .26, 0, 0, 7); ctx.fill();   // 불꽃 속 밝은 심지
+      ctx.fillStyle = 'rgba(255,240,170,.25)'; ctx.beginPath(); ctx.ellipse(fx + sw * .4, fy - h * .28, w * .38, h * .26, 0, 0, 7); ctx.fill();   // 불꽃 속 밝은 심지
     }
     for (let k = 0; k < 6; k++) {   // 위로 날아오르는 불티
       const ph = (T * 0.9 + k / 6 + f.seed) % 1, ang = k * 2.4 + f.seed, ex = f.x + Math.cos(ang) * R * .6 * ((k * 31) % 10) / 10, ey = f.y + Math.sin(ang) * R * .4 - ph * 38 * sc;
-      ctx.fillStyle = 'rgba(255,' + (200 - ph * 90) + ',60,' + (1 - ph) * .9 + ')'; ctx.beginPath(); ctx.arc(ex + Math.sin(ph * 9 + k) * 3, ey, 1.8 * (1 - ph * .5), 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,' + (200 - ph * 90) + ',60,' + (1 - ph) * .5 + ')'; ctx.beginPath(); ctx.arc(ex + Math.sin(ph * 9 + k) * 3, ey, 1.8 * (1 - ph * .5), 0, 7); ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
